@@ -17,12 +17,13 @@ Hackfest 2026 - Code for Humanity
 - Skor dampak + audit trail
 - Receipt blockchain (anti-tamper)
 - Dana aksi terverifikasi langsung
+- Live feed aksi lapangan terverifikasi
+- Peta lokasi GPS
+- Sinkronisasi data real-time
 
 ## Fitur yang Akan Dikembangkan
 
-- Live feed aksi lapangan terverifikasi
-- Peta lokasi GPS
-- Sinkronisasi data real-time (dashboard belum selesai)
+- ...
 
 ## Tech Stack [FRONT END]
 
