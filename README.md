@@ -1,15 +1,15 @@
-# Elysia with Bun runtime
+# Semoga Lolos Hackathon part 2 [Backend]
 
-## Getting Started
-To get started with this template, simply paste this command into your terminal:
-```bash
-bun create elysia ./elysia-example
-```
+Hackfest 2026 - Code for Humanity
 
-## Development
-To start the development server run:
-```bash
-bun run dev
-```
+> Repository for the Front-end
+>
+> <https://github.com/Hkaar/Semoga-Lolos-Hackathon-part-2>
 
-Open http://localhost:3000/ with your browser to see the result.
+## Requirements
+
+- Bun
+
+## Setup Guide
+
+- ...
