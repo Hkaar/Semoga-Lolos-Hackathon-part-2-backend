@@ -33,7 +33,7 @@ export const dashboardRoutes = new Elysia({ prefix: '/api/v1' })
                     .sort({ createdAt: -1 })
                     .skip(skip)
                     .limit(limitNum)
-                    .select('title description actionType isAuthentic impactScore location_name location extractedMetrics imageUrl createdAt')
+                    .select('title aiReasoning actionType isAuthentic impactScore location_name location extractedMetrics imageUrl createdAt')
                     .lean(),
                 Report.countDocuments(filter)
             ]);
@@ -85,7 +85,7 @@ export const dashboardRoutes = new Elysia({ prefix: '/api/v1' })
     })
 
     /**
-     * GET /api/stats/overview
+     * GET /api/v1/stats/overview
      * KPI cards: total, verified, rejected, verification_rate (0-100)
      * Always today vs yesterday
      */
@@ -144,7 +144,7 @@ export const dashboardRoutes = new Elysia({ prefix: '/api/v1' })
     })
 
     /**
-     * GET /api/stats/today
+     * GET /api/v1/stats/today
      * Impact summary: waste_kg, trees_planted, co2e_reduced_kg, active_citizens
      * Always today vs yesterday
      */
