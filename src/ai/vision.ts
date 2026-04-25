@@ -67,12 +67,12 @@ export const askEcoAgent = async (userMessage: string) => {
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); 
         
-        const prompt = `Kamu adalah "Klima-Agent", asisten pintar dari aplikasi KlimaChain. 
+        const prompt = `Kamu adalah "Klima-Agent", asisten pintar dari aplikasi Klima. 
         Tugasmu menjawab pertanyaan warga seputar lingkungan, cara daur ulang, atau info bank sampah.
         Aturan wajib: 
         1. Jawab dengan sangat singkat, padat, dan ramah (maksimal 2 paragraf).
         2. Gunakan emoji agar menarik.
-        3. Jika ditanya hal di luar lingkungan/sampah/kripto/KlimaChain, tolak dengan sopan.
+        3. Jika ditanya hal di luar lingkungan/sampah/kripto/Klima, tolak dengan sopan.
         
         Pertanyaan Warga: "${userMessage}"`;
 

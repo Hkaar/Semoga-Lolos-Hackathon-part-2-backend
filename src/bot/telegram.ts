@@ -9,6 +9,9 @@ const userCooldowns = new Map<string, number>();
 const userStrikes = new Map<string, number>();
 const COOLDOWN_TIME = 60 * 1000;
 
+const chatCooldowns = new Map<string, number>();
+const CHAT_COOLDOWN_TIME = 10 * 1000;
+
 bot.command("start", (ctx) => {
     ctx.reply("🌍 Selamat datang di KlimaBot!\nSilakan kirimkan foto sampah untuk divalidasi oleh AI dan dapatkan Eco-Token di Solana!");
 });
@@ -25,7 +28,7 @@ bot.command("reward", async (ctx) => {
         .text("🌳 Donasi 1 Pohon Bakau (200 Poin)", "redeem_pohon_200");
 
     await ctx.reply(
-        `🎁 **Katalog Reward KlimaChain**\n\n💳 **Saldo Poin Anda:** \`${saldoPoin} Poin\`\n\nPilih hadiah yang ingin Anda tukarkan di bawah ini:`, 
+        `🎁 **Katalog Reward KlimaBot**\n\n💳 **Saldo Poin Anda:** \`${saldoPoin} Poin\`\n\nPilih hadiah yang ingin Anda tukarkan di bawah ini:`, 
         { parse_mode: "Markdown", reply_markup: rewardMenu }
     );
 });
@@ -159,6 +162,33 @@ bot.on("message:photo", async (ctx) => {
     }
 });
 
+bot.on("message:text", async (ctx) => {
+    const chatId = ctx.chat.id.toString();
+    const text = ctx.message.text;
+    const now = Date.now();
+
+    if (text.startsWith("/")) return;
+
+    if (chatCooldowns.has(chatId)) {
+        const lastTime = chatCooldowns.get(chatId)!;
+        if (now - lastTime < CHAT_COOLDOWN_TIME) {
+            return ctx.reply(`⏳ Sedang memproses chat sebelumnya yang kamu kirim, tunggu sebentar.`); 
+        }
+    }
+
+    chatCooldowns.set(chatId, now);
+
+    await ctx.api.sendChatAction(ctx.chat.id, "typing");
+
+    try {
+        const reply = await askEcoAgent(text);
+        await ctx.reply(reply, { parse_mode: "Markdown" });
+    } catch (error) {
+        console.error("Agent Spam Error:", error);
+        chatCooldowns.delete(chatId);
+    }
+});
+
 bot.on("message:location", async (ctx) => {
     const chatId = ctx.chat.id.toString();
     const { latitude, longitude } = ctx.message.location;
@@ -170,7 +200,7 @@ bot.on("message:location", async (ctx) => {
             lastReport.location = { lat: latitude, lng: longitude };
             await lastReport.save();
 
-            await ctx.reply("📍 Lokasi tercatat! Terima kasih telah berkontribusi pada peta DePIN KlimaChain.", {
+            await ctx.reply("📍 Lokasi tercatat! Terima kasih telah berkontribusi pada peta DePIN KlimaBot.", {
                 reply_markup: { remove_keyboard: true } 
             });
         }
@@ -196,7 +226,7 @@ bot.on("callback_query:data", async (ctx) => {
         }
 
         if (ctx.callbackQuery.message) {
-            await ctx.reply(`🌱 **Panduan Edukasi KlimaChain**\n\nUntuk: ${jenisSampah}\n\n${edukasi}`, { 
+            await ctx.reply(`🌱 **Panduan Edukasi KlimaBot**\n\nUntuk: ${jenisSampah}\n\n${edukasi}`, { 
                 parse_mode: "Markdown",
                 reply_parameters: { message_id: ctx.callbackQuery.message.message_id } 
             });
