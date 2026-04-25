@@ -1,15 +1,17 @@
 {
-  "name": "Semoga-Lolos-Hackathon-part-2-backend",
+  "name": "Terra",
   "version": "1.0.50",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "bun run --watch src/index.ts"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.98.4",
     "bs58": "^6.0.0",
     "elysia": "latest",
+    "grammy": "^1.42.0",
     "mongoose": "^9.5.0"
   },
   "devDependencies": {

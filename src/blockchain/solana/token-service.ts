@@ -6,7 +6,7 @@ import {
   burn,
   getAccount,
 } from "@solana/spl-token";
-import { connection, serverKeypair, ecoMintPublicKey } from "@/lib/solana/connection";
+import { connection, serverKeypair, ecoMintPublicKey } from "@/src/blockchain/solana/connection";
 
 const DECIMALS = 6;
 

@@ -1,6 +1,6 @@
 import { Keypair } from "@solana/web3.js";
 import bs58 from "bs58";
-import { encrypt, decrypt } from "@/lib/solana/crypto-service";
+import { encrypt, decrypt } from "@/src/blockchain/solana/crypto-service";
 
 export interface WalletData {
   address: string;

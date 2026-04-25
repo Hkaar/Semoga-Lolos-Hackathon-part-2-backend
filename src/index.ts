@@ -1,7 +1,17 @@
-import { Elysia } from "elysia";
+import { Elysia } from 'elysia';
+import { connectDB } from './config/db';
+import { dashboardRoutes } from './api/dashboard';
 
-const app = new Elysia().get("/", () => "Hello Elysia").listen(3000);
+import './bot/telegram'; 
 
-console.log(
-  `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
-);
+const startServer = async () => {
+    await connectDB();
+
+    const app = new Elysia()
+        .use(dashboardRoutes)
+        .listen(process.env.PORT || 3000);
+
+    console.log(`🦊 Elysia API (Frontend Gateway) menyala di port ${app.server?.port}`);
+};
+
+startServer();

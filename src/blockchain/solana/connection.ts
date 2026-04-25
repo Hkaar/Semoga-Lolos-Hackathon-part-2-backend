@@ -6,7 +6,7 @@ export const connection = new Connection(
   "confirmed"
 );
 
-/** Parse private key — accepts byte array [1,2,3,...] or base58 string */
+/** Parse private key accepts byte array [1,2,3,...] or base58 string */
 function parsePrivateKey(raw: string): Uint8Array {
   const trimmed = raw.trim();
   if (trimmed.startsWith("[")) {
