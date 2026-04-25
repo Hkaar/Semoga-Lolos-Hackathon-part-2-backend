@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 
 const reportSchema = new mongoose.Schema({
     chatId: { type: String, required: true },
+    userName: { type: String, default: "Pahlawan Anonim" },
     imageUrl: { type: String, required: true },
     isAuthentic: { type: Boolean, required: true },
 
