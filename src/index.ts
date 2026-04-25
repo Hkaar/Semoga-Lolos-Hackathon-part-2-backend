@@ -1,4 +1,5 @@
 import { Elysia } from 'elysia';
+import { cors } from "@elysiajs/cors";
 
 import { connectDB } from '@/src/config/db';
 import { dashboardRoutes } from '@/src/api/dashboard';
@@ -10,6 +11,7 @@ const startServer = async () => {
     await connectDB();
 
     const app = new Elysia()
+        .use(cors()) 
         .use(dashboardRoutes)
         .use(companyAuthRoutes)
         .listen(process.env.PORT || 3000);
