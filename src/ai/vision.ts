@@ -62,3 +62,24 @@ export const analyzeClimateAction = async (imageUrl: string) => {
         return { isAuthentic: false, actionType: "Error", impactScore: 0, reasoning: "Gagal memproses gambar." };
     }
 };
+
+export const askEcoAgent = async (userMessage: string) => {
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); 
+        
+        const prompt = `Kamu adalah "Klima-Agent", asisten pintar dari aplikasi KlimaChain. 
+        Tugasmu menjawab pertanyaan warga seputar lingkungan, cara daur ulang, atau info bank sampah.
+        Aturan wajib: 
+        1. Jawab dengan sangat singkat, padat, dan ramah (maksimal 2 paragraf).
+        2. Gunakan emoji agar menarik.
+        3. Jika ditanya hal di luar lingkungan/sampah/kripto/KlimaChain, tolak dengan sopan.
+        
+        Pertanyaan Warga: "${userMessage}"`;
+
+        const result = await model.generateContent(prompt);
+        return result.response.text();
+    } catch (error) {
+        console.error("Chat Agent Error:", error);
+        return "Maaf, sistem komunikasi Klima-Agent sedang mengalami gangguan. 🌍🔌";
+    }
+};

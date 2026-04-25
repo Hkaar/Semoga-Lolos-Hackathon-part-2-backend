@@ -1,17 +1,73 @@
 import { Bot, InlineKeyboard, Keyboard } from "grammy";
-import { analyzeClimateAction } from '../ai/vision';
+import { analyzeClimateAction, askEcoAgent } from '../ai/vision';
 import { mintRewardOnSolana } from '../blockchain/solana';
 import { Report } from '../models/Report';
 import { User } from "../models/User";
 
 const bot = new Bot(process.env.TELEGRAM_TOKEN as string);
+const userCooldowns = new Map<string, number>();
+const userStrikes = new Map<string, number>();
+const COOLDOWN_TIME = 60 * 1000;
 
 bot.command("start", (ctx) => {
     ctx.reply("🌍 Selamat datang di KlimaBot!\nSilakan kirimkan foto sampah untuk divalidasi oleh AI dan dapatkan Eco-Token di Solana!");
 });
 
+bot.command("reward", async (ctx) => {
+    const chatId = ctx.chat.id.toString();
+    
+    const user = await User.findOne({ telegramId: chatId });
+    const saldoPoin = user ? user.totalImpactScore : 0;
+
+    const rewardMenu = new InlineKeyboard()
+        .text("📱 Pulsa Rp5.000 (50 Poin)", "redeem_pulsa_50").row()
+        .text("☕ Voucher Kopi 15% (100 Poin)", "redeem_kopi_100").row()
+        .text("🌳 Donasi 1 Pohon Bakau (200 Poin)", "redeem_pohon_200");
+
+    await ctx.reply(
+        `🎁 **Katalog Reward KlimaChain**\n\n💳 **Saldo Poin Anda:** \`${saldoPoin} Poin\`\n\nPilih hadiah yang ingin Anda tukarkan di bawah ini:`, 
+        { parse_mode: "Markdown", reply_markup: rewardMenu }
+    );
+});
+
+bot.command("profile", async (ctx) => {
+    const chatId = ctx.chat.id.toString();
+    const user = await User.findOne({ telegramId: chatId });
+
+    if (!user) {
+        return ctx.reply("Anda belum terdaftar. Kirim foto sampah pertama Anda untuk memulai!");
+    }
+
+    let tier = "🌱 Pemula Hijau";
+    if (user.totalImpactScore > 100) tier = "⚔️ Ksatria Lingkungan";
+    if (user.totalImpactScore > 500) tier = "👑 Penjaga Bumi (Earth Guardian)";
+
+    await ctx.reply(
+        `👤 **Profil Pahlawan Bumi**\n\n` +
+        `🎖️ **Pangkat:** ${tier}\n` +
+        `🌱 Total Aksi: ${user.totalReports} kali\n` +
+        `💳 Saldo Poin: ${user.totalImpactScore} Poin\n\n` +
+        `🔗 **Alamat Dompet Solana:**\n\`${user.solanaWalletAddress || "Belum dibuat"}\`\n\n` +
+        `*Terus kumpulkan poin untuk mencapai pangkat tertinggi!*`,
+        { parse_mode: "Markdown" }
+    );
+});
+
 bot.on("message:photo", async (ctx) => {
     const chatId = ctx.chat.id.toString();
+
+    const now = Date.now();
+
+    if (userCooldowns.has(chatId)) {
+        const lastTime = userCooldowns.get(chatId)!;
+        if (now - lastTime < COOLDOWN_TIME) {
+            const sisaWaktu = Math.ceil((COOLDOWN_TIME - (now - lastTime)) / 1000);
+            return ctx.reply(`⏳ **Sistem AI Sedang Pendinginan.**\nMohon tunggu ${sisaWaktu} detik lagi sebelum mengirim foto baru.`);
+        }
+    }
+
+    userCooldowns.set(chatId, now);
+
     const loadingMsg = await ctx.reply("⏳ Memindai gambar dengan AI Vision...");
 
     try {
@@ -23,9 +79,29 @@ bot.on("message:photo", async (ctx) => {
         const aiResult = await analyzeClimateAction(fileUrl);
 
         if (!aiResult.isAuthentic) {
-            await ctx.api.editMessageText(chatId, loadingMsg.message_id, `❌ Verifikasi Gagal.\nAlasan: ${aiResult.reasoning}`);
-            return;
+            let strikes = (userStrikes.get(chatId) || 0) + 1;
+
+            if (strikes >= 3) {
+                await User.findOneAndUpdate(
+                    { telegramId: chatId },
+                    { $inc: { totalImpactScore: -5 } },
+                    { upsert: true }
+                );
+                userStrikes.delete(chatId); 
+                
+                await ctx.api.editMessageText(chatId, loadingMsg.message_id, 
+                    `❌ **Verifikasi Gagal.**\nAlasan: ${aiResult.reasoning}\n\n⚠️ **PENALTI: -5 POIN!**\nAnda telah 3x berturut-turut mengirim foto tidak valid. Poin Anda dipotong sebagai sanksi.`
+                );
+            } else {
+                userStrikes.set(chatId, strikes);
+                await ctx.api.editMessageText(chatId, loadingMsg.message_id, 
+                    `❌ **Verifikasi Gagal.**\nAlasan: ${aiResult.reasoning}\n\n⚠️ *Peringatan ${strikes}/3: Jika 3x berturut-turut mengirim gambar palsu, poin Anda akan dipotong.*`
+                );
+            }
+            return; 
         }
+
+        userStrikes.delete(chatId);
 
         const eduKeyboard = new InlineKeyboard()
             .text("📖 Cara mengolah sampah ini", `edu_${aiResult.actionType}`)
@@ -37,7 +113,7 @@ bot.on("message:photo", async (ctx) => {
             { reply_markup: eduKeyboard }
         );
 
-        const txHash = await mintRewardOnSolana(chatId, 10);
+        const txHash = await mintRewardOnSolana(chatId, aiResult.impactScore);
 
         await Report.create({
             chatId,
@@ -46,7 +122,8 @@ bot.on("message:photo", async (ctx) => {
             actionType: aiResult.actionType,
             impactScore: aiResult.impactScore,
             aiReasoning: aiResult.reasoning,
-            solanaTxHash: txHash
+            solanaTxHash: txHash,
+            imageHash: aiResult.imageHash
         });
 
         const user = await User.findOneAndUpdate(
@@ -78,6 +155,7 @@ bot.on("message:photo", async (ctx) => {
     } catch (error) {
         console.error("Bot Pipeline Error:", error);
         ctx.reply("⚠️ Terjadi kesalahan pada server. Coba lagi nanti.");
+        userCooldowns.delete(chatId);
     }
 });
 
@@ -103,10 +181,10 @@ bot.on("message:location", async (ctx) => {
 
 bot.on("callback_query:data", async (ctx) => {
     const data = ctx.callbackQuery.data;
-    
-    await ctx.answerCallbackQuery();
+    const chatId = ctx.callbackQuery.from.id.toString();
 
     if (data.startsWith("edu_")) {
+        await ctx.answerCallbackQuery(); 
         const jenisSampah = data.replace("edu_", "");
         
         let edukasi = "💡 Kumpulkan sampah ini, pastikan dalam keadaan kering, dan bawa ke Bank Sampah terdekat.";
@@ -117,7 +195,61 @@ bot.on("callback_query:data", async (ctx) => {
             edukasi = "💡 Tips Plastik: Bilas botol/plastik ini sampai bersih, remukkan agar menghemat tempat. Kamu bisa menyulapnya menjadi pot tanaman kecil atau menjualnya ke pengepul terdekat!";
         }
 
-        await ctx.reply(`🌱 **Panduan Edukasi KlimaChain**\n\nUntuk: ${jenisSampah}\n\n${edukasi}`, { parse_mode: "Markdown" });
+        if (ctx.callbackQuery.message) {
+            await ctx.reply(`🌱 **Panduan Edukasi KlimaChain**\n\nUntuk: ${jenisSampah}\n\n${edukasi}`, { 
+                parse_mode: "Markdown",
+                reply_parameters: { message_id: ctx.callbackQuery.message.message_id } 
+            });
+        }
+    }
+
+    if (data.startsWith("redeem_")) {
+        const parts = data.split("_"); 
+        const itemName = parts[1].toUpperCase();
+        const cost = parseInt(parts[2]);
+
+        const user = await User.findOne({ telegramId: chatId });
+        const currentBalance = user ? user.totalImpactScore : 0;
+
+        if (currentBalance < cost) {
+            await ctx.answerCallbackQuery({ 
+                text: `❌ Poin Anda tidak cukup! Anda butuh ${cost} poin, saldo Anda ${currentBalance}.`, 
+                show_alert: true 
+            });
+            return;
+        }
+
+        await ctx.answerCallbackQuery("Memproses penukaran...");
+
+        if (user) {
+            user.totalImpactScore -= cost;
+            await user.save();
+        }
+
+        if (ctx.callbackQuery.message) {
+            await ctx.api.editMessageText(
+                chatId, 
+                ctx.callbackQuery.message.message_id, 
+                `🎉 **PENUKARAN SUKSES!** 🎉\n\nAnda telah menukarkan **${cost} Poin** untuk **${itemName}**.\n\n💳 Sisa saldo Anda: \`${user?.totalImpactScore} Poin\`.\n\n⏳ *Reward sedang diproses oleh admin kami. Terus jaga bumi kita!* 🌍`, 
+                { parse_mode: "Markdown" } 
+            );
+        }
+    }
+});
+
+bot.on("message:text", async (ctx) => {
+    const text = ctx.message.text;
+
+    if (text.startsWith("/")) return;
+
+    await ctx.api.sendChatAction(ctx.chat.id, "typing");
+
+    try {
+        const reply = await askEcoAgent(text);
+        
+        await ctx.reply(reply, { parse_mode: "Markdown" });
+    } catch (error) {
+        await ctx.reply("Waduh, Klima-Agent sedang pusing mengurus sampah dunia. Coba tanya lagi nanti ya!");
     }
 });
 

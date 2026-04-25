@@ -8,6 +8,7 @@ const reportSchema = new mongoose.Schema({
     impactScore: { type: Number, default: 0 },
     aiReasoning: { type: String },
     solanaTxHash: { type: String }, 
+    imageHash: { type: String }, 
     location: {
         lat: { type: Number },
         lng: { type: Number }
