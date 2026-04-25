@@ -6,15 +6,18 @@
     "dev": "bun run --watch src/index.ts"
   },
   "dependencies": {
+    "@elysiajs/jwt": "^1.4.2",
     "@google/generative-ai": "^0.24.1",
     "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.98.4",
+    "bcrypt": "^6.0.0",
     "bs58": "^6.0.0",
     "elysia": "latest",
     "grammy": "^1.42.0",
     "mongoose": "^9.5.0"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "bun-types": "latest"
   },
   "module": "src/index.js"
