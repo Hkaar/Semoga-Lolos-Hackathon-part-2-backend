@@ -57,16 +57,6 @@ bot.command("profile", async (ctx) => {
     );
 });
 
-bot.command("seedsponsor", async (ctx) => {
-    await Company.insertMany([
-        { name: "PT Aqua", targetCategory: "plastik" },
-        { name: "Indomie", targetCategory: "plastik" },
-        { name: "Unilever", targetCategory: "organik" },
-        { name: "Bank Mandiri", targetCategory: "kertas" }
-    ]);
-    await ctx.reply("✅ Data Dummy Perusahaan Sponsor berhasil disuntikkan ke MongoDB!");
-});
-
 bot.on("message:photo", async (ctx) => {
     const chatId = ctx.chat.id.toString();
 
@@ -129,7 +119,6 @@ bot.on("message:photo", async (ctx) => {
         let sponsorText = "🤝 *Didanai oleh: KlimaChain Community Fund*";
 
         if (matchingCompanies.length > 0) {
-            // Bagi rata skor CSR ke perusahaan sponsor
             const splitScore = Number((aiResult.impactScore / matchingCompanies.length).toFixed(2));
             const companyNames = [];
 
@@ -253,23 +242,22 @@ bot.on("callback_query:data", async (ctx) => {
     const chatId = ctx.callbackQuery.from.id.toString();
 
     if (data.startsWith("edu_")) {
-        await ctx.answerCallbackQuery(); 
-        const jenisSampah = data.replace("edu_", "");
+        const jenis = data.replace("edu_", ""); 
         
-        let edukasi = "💡 Kumpulkan sampah ini, pastikan dalam keadaan kering, dan bawa ke Bank Sampah terdekat.";
+        let tips = "💡 Kumpulkan dan olah limbah ini dengan bijak demi bumi kita.";
         
-        if (jenisSampah.toLowerCase().includes("organik")) {
-            edukasi = "💡 Tips Organik: Cincang sisa makanan/daun ini, masukkan ke dalam pot atau lubang biopori, dan campur dengan sedikit tanah untuk dijadikan pupuk kompos yang menyuburkan tanamanmu!";
-        } else if (jenisSampah.toLowerCase().includes("plastik") || jenisSampah.toLowerCase().includes("anorganik")) {
-            edukasi = "💡 Tips Plastik: Bilas botol/plastik ini sampai bersih, remukkan agar menghemat tempat. Kamu bisa menyulapnya menjadi pot tanaman kecil atau menjualnya ke pengepul terdekat!";
+        if (jenis === "Plastic Waste") {
+            tips = "💡 Tips Plastik: Bersihkan dan remukkan botol/kemasan ini. Bawa ke Bank Sampah untuk didaur ulang menjadi barang bernilai jual!";
+        } else if (jenis === "Air Pollution") {
+            tips = "💡 Tips Udara Bersih: Kurangi emisi dengan menggunakan transportasi umum, bersepeda, atau menanam tanaman penyerap polutan di rumahmu!";
+        } else if (jenis === "General Environment") {
+            tips = "💡 Tips Lingkungan: Pisahkan sampah organik untuk dijadikan pupuk kompos, dan jaga kebersihan sekitarmu setiap hari!";
         }
 
-        if (ctx.callbackQuery.message) {
-            await ctx.reply(`🌱 **Panduan Edukasi KlimaBot**\n\nUntuk: ${jenisSampah}\n\n${edukasi}`, { 
-                parse_mode: "Markdown",
-                reply_parameters: { message_id: ctx.callbackQuery.message.message_id } 
-            });
-        }
+        await ctx.reply(`🌱 **Edukasi KlimaChain**\n\nKategori: ${jenis}\n\n${tips}`, { 
+            parse_mode: "Markdown",
+            reply_parameters: { message_id: ctx.callbackQuery.message?.message_id || 0 }
+        });
     }
 
     if (data.startsWith("redeem_")) {

@@ -29,22 +29,27 @@ export const analyzeClimateAction = async (imageUrl: string) => {
             generationConfig: { responseMimeType: "application/json" }
         });
 
-        const prompt = `Kamu adalah Auditor Lingkungan dari KlimaBot. Tugasmu memvalidasi foto aksi bersih sampah, daur ulang, atau tumpukan sampah yang dikumpulkan warga. 
+        const prompt = `Kamu adalah Auditor Lingkungan dari KlimaChain. Tugasmu memvalidasi foto aksi lingkungan. 
         
-        ATURAN VALIDASI (PENTING):
-        1. TOLAK HANYA JIKA: Gambar difoto dari layar monitor/laptop (ada pola moiré) atau murni buatan AI generator (gambar tidak logis).
-        2. TERIMA JIKA: Gambar menunjukkan sampah (plastik, organik, kertas, dll) atau aksi lingkungan, meskipun itu hanya difoto di atas meja, di dalam kamar, atau terlihat seperti tumpukan sampah biasa. Beri toleransi tinggi selama itu adalah foto sampah.
+        ATURAN VALIDASI:
+        1. TOLAK JIKA: Gambar difoto dari layar monitor atau murni buatan AI generator.
+        2. TERIMA JIKA: Gambar menunjukkan aksi nyata lingkungan, meskipun difoto di atas meja/ruangan.
         3. Beri skor TINGGI (>70) hanya jika sampah terlihat sudah dimasukkan ke dalam kantong sampah (trash bag), karung, atau tong sampah. Jika sampah hanya dijejerkan di atas meja atau lantai biasa, beri skor RENDAH (<30).
         
+        KATEGORI WAJIB (Pilih salah satu yang paling cocok):
+        - "Plastic Waste" (Jika ada unsur botol, kemasan plastik, bungkus, dll)
+        - "Air Pollution" (Jika ada unsur asap, kendaraan, atau aksi naik sepeda/transportasi umum)
+        - "General Environment" (Jika itu organik, daun, pohon, kardus, atau bersih-bersih umum)
+        
         ATURAN OUTPUT JSON:
-        Bagian "reasoning" WAJIB sangat singkat, ramah, dan tidak lebih dari 2 kalimat pendek! Jangan berikan analisis forensik yang panjang.
+        Bagian "reasoning" maksimal 2 kalimat pendek!
         
         WAJIB BALAS DENGAN JSON FORMAT MURNI:
         { 
           "isAuthentic": boolean, 
-          "actionType": "string", 
+          "actionType": "Plastic Waste" | "Air Pollution" | "General Environment", 
           "impactScore": number, 
-          "reasoning": "string (Maksimal 2 kalimat pendek)" 
+          "reasoning": "string" 
         }`;
 
         const result = await model.generateContent([

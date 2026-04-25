@@ -5,7 +5,7 @@ export const companyJwtMiddleware = new Elysia({ name: 'company-jwt-middleware' 
     .use(
         jwt({
             name: 'jwt',
-            secret: process.env.JWT_SECRET || 'change-this-secret',
+            secret: process.env.JWT_SECRET || 'danieljnt',
             exp: '7d',
         })
     )
