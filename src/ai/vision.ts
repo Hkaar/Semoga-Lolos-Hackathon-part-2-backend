@@ -29,27 +29,40 @@ export const analyzeClimateAction = async (imageUrl: string) => {
             generationConfig: { responseMimeType: "application/json" }
         });
 
-        const prompt = `Kamu adalah Auditor Lingkungan dari KlimaChain. Tugasmu memvalidasi foto aksi lingkungan. 
+        const prompt = `Kamu adalah Auditor Lingkungan dari KlimaChain. Tugasmu memvalidasi foto aksi lingkungan.
         
         ATURAN VALIDASI:
         1. TOLAK JIKA: Gambar difoto dari layar monitor atau murni buatan AI generator.
-        2. TERIMA JIKA: Gambar menunjukkan aksi nyata lingkungan, meskipun difoto di atas meja/ruangan.
-        3. Beri skor TINGGI (>70) hanya jika sampah terlihat sudah dimasukkan ke dalam kantong sampah (trash bag), karung, atau tong sampah. Jika sampah hanya dijejerkan di atas meja atau lantai biasa, beri skor RENDAH (<30).
+        2. TERIMA JIKA: Gambar menunjukkan aksi nyata lingkungan.
         
-        KATEGORI WAJIB (Pilih salah satu yang paling cocok):
-        - "Plastic Waste" (Jika ada unsur botol, kemasan plastik, bungkus, dll)
-        - "Air Pollution" (Jika ada unsur asap, kendaraan, atau aksi naik sepeda/transportasi umum)
-        - "General Environment" (Jika itu organik, daun, pohon, kardus, atau bersih-bersih umum)
+        LOGIKA PENILAIAN (STRICT):
+        - Beri skor TINGGI (>70) hanya jika sampah terlihat sudah dimasukkan ke dalam kantong sampah (trash bag), karung, atau tong sampah. Ini menandakan aksi nyata pengumpulan.
+        - Jika sampah hanya dijejerkan di atas meja atau lantai biasa tanpa wadah pengumpulan, beri skor RENDAH (<30).
+        
+        KATEGORI WAJIB:
+        - "Plastic Waste" (Botol, plastik, kemasan)
+        - "Air Pollution" (Aksi naik sepeda, transportasi umum, atau penanganan asap)
+        - "General Environment" (Organik, kertas, atau aksi bersih-bersih umum)
         
         ATURAN OUTPUT JSON:
         Bagian "reasoning" maksimal 2 kalimat pendek!
+        Estimasi dampak lingkungan (extractedMetrics):
+        - waste_kg: Estimasi berat sampah (Kg).
+        - trees_planted: Jumlah pohon yang ditanam.
+        - co2e_reduced_kg: Estimasi reduksi emisi (impactScore * 0.2).
         
         WAJIB BALAS DENGAN JSON FORMAT MURNI:
         { 
           "isAuthentic": boolean, 
           "actionType": "Plastic Waste" | "Air Pollution" | "General Environment", 
           "impactScore": number, 
-          "reasoning": "string" 
+          "reasoning": "string",
+          "title": "string",
+          "extractedMetrics": {
+            "waste_kg": number,
+            "trees_planted": number,
+            "co2e_reduced_kg": number
+          }
         }`;
 
         const result = await model.generateContent([

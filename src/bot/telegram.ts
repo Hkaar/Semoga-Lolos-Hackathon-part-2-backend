@@ -155,7 +155,9 @@ bot.on("message:photo", async (ctx) => {
             aiReasoning: aiResult.reasoning,
             solanaTxHash: txHash,
             imageHash: aiResult.imageHash,
-            sponsoredBy: sponsoredByData
+            title: aiResult.title,
+            sponsoredBy: sponsoredByData,
+            extractedMetrics: aiResult.extractedMetrics
         });
 
         const user = await User.findOneAndUpdate(
