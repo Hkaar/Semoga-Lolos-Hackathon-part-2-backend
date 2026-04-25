@@ -1,10 +1,9 @@
-import { Elysia, t } from 'elysia';
+import { Elysia } from 'elysia';
 import { Report } from '@/src/models/Report';
 import { User } from '@/src/models/User';
 
-import { dayRange } from '@/utils/geocode';
-
 export const dashboardRoutes = new Elysia({ prefix: '/api/v1' })
+    
     .get('/reports', async ({ query }) => {
         try {
             const { startDate, endDate, limit = '50', page = '1' } = query;
@@ -14,158 +13,94 @@ export const dashboardRoutes = new Elysia({ prefix: '/api/v1' })
             if (startDate || endDate) {
                 filter.createdAt = {};
                 if (startDate) {
-                    const s = new Date(startDate);
+                    const s = new Date(startDate as string);
                     s.setUTCHours(0, 0, 0, 0);
                     filter.createdAt.$gte = s;
                 }
                 if (endDate) {
-                    const e = new Date(endDate);
+                    const e = new Date(endDate as string);
                     e.setUTCHours(23, 59, 59, 999);
                     filter.createdAt.$lte = e;
                 }
             }
 
-            const limitNum = Math.min(parseInt(limit), 100);
-            const skip = (parseInt(page) - 1) * limitNum;
+            const limitNum = Math.min(parseInt(limit as string), 100);
+            const skip = (parseInt(page as string) - 1) * limitNum;
 
-            const [data, total] = await Promise.all([
+            const [reports, total] = await Promise.all([
                 Report.find(filter)
                     .sort({ createdAt: -1 })
                     .skip(skip)
                     .limit(limitNum)
-                    .select('title aiReasoning actionType isAuthentic impactScore location_name location extractedMetrics imageUrl createdAt')
                     .lean(),
                 Report.countDocuments(filter)
             ]);
 
+            const chatIds = [...new Set(reports.map(r => r.chatId))];
+
+            const users = await User.find({ telegramId: { $in: chatIds } }).lean();
+
+            const userMap = new Map();
+            users.forEach(u => {
+                userMap.set(u.telegramId, u.firstName || u.username || 'Pahlawan Anonim');
+            });
+
+            const enrichedReports = reports.map(r => ({
+                ...r,
+                userName: userMap.get(r.chatId) || r.userName || 'Pahlawan Anonim'
+            }));
+
             return {
-                status: "success",
-                data,
+                status: 'success',
+                data: enrichedReports,
                 pagination: {
                     total,
-                    page: parseInt(page),
-                    limit: limitNum,
-                    pages: Math.ceil(total / limitNum),
+                    page: parseInt(page as string),
+                    pages: Math.ceil(total / limitNum)
                 }
             };
-        } catch (error) {
-            return { status: "error", message: "Gagal mengambil data dari database" };
-        }
-    }, {
-        query: t.Object({
-            startDate: t.Optional(t.String()),
-            endDate: t.Optional(t.String()),
-            limit: t.Optional(t.String()),
-            page: t.Optional(t.String()),
-        })
-    })
-
-    .get('/leaderboard', async () => {
-        try {
-            const topUsers = await User.find()
-                .sort({ totalImpactScore: -1 })
-                .limit(5)
-                .select('firstName username totalImpactScore totalReports solanaWalletAddress');
-
-            return { status: "success", data: topUsers };
-        } catch (error) {
-            return { status: "error", message: "Gagal mengambil data leaderboard" };
+        } catch (error: any) {
+            return { status: 'error', message: error.message };
         }
     })
 
     .get('/map-points', async () => {
         try {
-            const points = await Report.find({ "location.lat": { $exists: true } })
-                .select('location location_name actionType impactScore createdAt');
-
-            return { status: "success", data: points };
-        } catch (error) {
-            return { status: "error", message: "Gagal mengambil data peta" };
+            // Hanya ambil laporan yang memiliki koordinat latitude
+            const points = await Report.find({ 'location.lat': { $exists: true } })
+                .select('location location_name actionType impactScore createdAt')
+                .lean();
+                
+            return { status: 'success', data: points };
+        } catch (error: any) {
+            return { status: 'error', message: error.message };
         }
     })
 
-    /**
-     * GET /api/v1/stats/overview
-     * KPI cards: total, verified, rejected, verification_rate (0-100)
-     * Always today vs yesterday
-     */
-    .get('/stats/overview', async () => {
-        try {
-            const today = new Date();
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
-
-            const { start: todayStart, end: todayEnd } = dayRange(today);
-            const { start: yestStart, end: yestEnd } = dayRange(yesterday);
-
-            const statsPipeline = (start: Date, end: Date) => [
-                { $match: { createdAt: { $gte: start, $lte: end } } },
-                {
-                    $group: {
-                        _id: null,
-                        total: { $sum: 1 },
-                        verified: { $sum: { $cond: [{ $eq: ['$isAuthentic', true] }, 1, 0] } },
-                        rejected: { $sum: { $cond: [{ $eq: ['$isAuthentic', false] }, 1, 0] } },
-                    }
-                }
-            ];
-
-            const [todayStats, yestStats] = await Promise.all([
-                Report.aggregate(statsPipeline(todayStart, todayEnd)),
-                Report.aggregate(statsPipeline(yestStart, yestEnd)),
-            ]);
-
-            const td = todayStats[0] ?? { total: 0, verified: 0, rejected: 0 };
-            const yd = yestStats[0] ?? { total: 0, verified: 0, rejected: 0 };
-
-            const pctDelta = (a: number, b: number) =>
-                b === 0 ? null : Math.round(((a - b) / b) * 100);
-
-            const verification_rate = td.total === 0 ? 0 : Math.round((td.verified / td.total) * 100);
-            const yest_verification_rate = yd.total === 0 ? 0 : Math.round((yd.verified / yd.total) * 100);
-
-            return {
-                status: "success",
-                data: {
-                    total_actions: td.total,
-                    verified: td.verified,
-                    rejected: td.rejected,
-                    verification_rate,
-                    deltas: {
-                        total_actions: pctDelta(td.total, yd.total),
-                        verified: pctDelta(td.verified, yd.verified),
-                        verification_rate: pctDelta(verification_rate, yest_verification_rate),
-                    }
-                }
-            };
-        } catch (error) {
-            return { status: "error", message: "Gagal mengambil stats overview" };
-        }
-    })
-
-    /**
-     * GET /api/v1/stats/today
-     * Impact summary: waste_kg, trees_planted, co2e_reduced_kg, active_citizens
-     * Always today vs yesterday
-     */
     .get('/stats/today', async () => {
         try {
-            const today = new Date();
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
-
-            const { start: todayStart, end: todayEnd } = dayRange(today);
-            const { start: yestStart, end: yestEnd } = dayRange(yesterday);
+            const now = new Date();
+            
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
+            
+            const yestStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
+            const yestEnd = new Date(todayStart.getTime() - 1);
 
             const metricsPipeline = (start: Date, end: Date) => [
-                { $match: { createdAt: { $gte: start, $lte: end }, isAuthentic: true } },
+                {
+                    $match: {
+                        createdAt: { $gte: start, $lte: end },
+                        isAuthentic: true 
+                    }
+                },
                 {
                     $group: {
                         _id: null,
-                        waste_kg: { $sum: '$extractedMetrics.waste_kg' },
-                        trees_planted: { $sum: '$extractedMetrics.trees_planted' },
-                        co2e_reduced_kg: { $sum: '$extractedMetrics.co2e_reduced_kg' },
-                        active_citizens: { $addToSet: '$chatId' },
+                        waste_kg: { $sum: "$extractedMetrics.waste_kg" },
+                        trees_planted: { $sum: "$extractedMetrics.trees_planted" },
+                        co2e_reduced_kg: { $sum: "$extractedMetrics.co2e_reduced_kg" },
+                        active_citizens: { $addToSet: "$chatId" } 
                     }
                 },
                 {
@@ -173,7 +108,7 @@ export const dashboardRoutes = new Elysia({ prefix: '/api/v1' })
                         waste_kg: 1,
                         trees_planted: 1,
                         co2e_reduced_kg: 1,
-                        active_citizens: { $size: '$active_citizens' }
+                        active_citizens: { $size: "$active_citizens" }
                     }
                 }
             ];
@@ -187,7 +122,7 @@ export const dashboardRoutes = new Elysia({ prefix: '/api/v1' })
             const yd = yestMetrics[0] ?? { waste_kg: 0, trees_planted: 0, co2e_reduced_kg: 0, active_citizens: 0 };
 
             const pctDelta = (a: number, b: number) =>
-                b === 0 ? null : Math.round(((a - b) / b) * 100);
+                b === 0 ? (a > 0 ? 100 : 0) : Math.round(((a - b) / b) * 100);
 
             return {
                 status: "success",
@@ -200,11 +135,36 @@ export const dashboardRoutes = new Elysia({ prefix: '/api/v1' })
                         waste_kg: pctDelta(td.waste_kg, yd.waste_kg),
                         trees_planted: pctDelta(td.trees_planted, yd.trees_planted),
                         co2e_reduced_kg: pctDelta(td.co2e_reduced_kg, yd.co2e_reduced_kg),
-                        active_citizens: pctDelta(td.active_citizens, yd.active_citizens),
+                        active_citizens: pctDelta(td.active_citizens, yd.active_citizens)
                     }
                 }
             };
-        } catch (error) {
-            return { status: "error", message: "Gagal mengambil stats today" };
+        } catch (error: any) {
+            return { status: 'error', message: error.message };
+        }
+    })
+
+    .get('/stats/overview', async () => {
+        try {
+            const metrics = await Report.aggregate([
+                { $match: { isAuthentic: true } },
+                {
+                    $group: {
+                        _id: null,
+                        total_waste_kg: { $sum: "$extractedMetrics.waste_kg" },
+                        total_trees_planted: { $sum: "$extractedMetrics.trees_planted" },
+                        total_co2e_reduced_kg: { $sum: "$extractedMetrics.co2e_reduced_kg" }
+                    }
+                }
+            ]);
+
+            const data = metrics[0] || { total_waste_kg: 0, total_trees_planted: 0, total_co2e_reduced_kg: 0 };
+
+            return {
+                status: 'success',
+                data: data
+            };
+        } catch (error: any) {
+            return { status: 'error', message: error.message };
         }
     });
