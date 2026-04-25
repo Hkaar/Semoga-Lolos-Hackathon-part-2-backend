@@ -17,7 +17,6 @@ const reportSchema = new mongoose.Schema({
     },
 
     title: { type: String, default: "Unidentified Action" },
-    description: { type: String, default: "" },
 
     location_name: { type: String },
     extractedMetrics: {
