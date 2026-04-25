@@ -3,6 +3,7 @@ import { analyzeClimateAction, askEcoAgent } from '../ai/vision';
 import { mintRewardOnSolana } from '../blockchain/solana';
 import { Report } from '../models/Report';
 import { User } from "../models/User";
+import { Company } from '../models/Company';
 
 const bot = new Bot(process.env.TELEGRAM_TOKEN as string);
 const userCooldowns = new Map<string, number>();
@@ -56,6 +57,16 @@ bot.command("profile", async (ctx) => {
     );
 });
 
+bot.command("seedsponsor", async (ctx) => {
+    await Company.insertMany([
+        { name: "PT Aqua", targetCategory: "plastik" },
+        { name: "Indomie", targetCategory: "plastik" },
+        { name: "Unilever", targetCategory: "organik" },
+        { name: "Bank Mandiri", targetCategory: "kertas" }
+    ]);
+    await ctx.reply("✅ Data Dummy Perusahaan Sponsor berhasil disuntikkan ke MongoDB!");
+});
+
 bot.on("message:photo", async (ctx) => {
     const chatId = ctx.chat.id.toString();
 
@@ -106,6 +117,33 @@ bot.on("message:photo", async (ctx) => {
 
         userStrikes.delete(chatId);
 
+        const actionTypeStr = aiResult.actionType.toLowerCase();
+        
+        const allCompanies = await Company.find();
+
+        const matchingCompanies = allCompanies.filter(c => 
+            actionTypeStr.includes(c.targetCategory.toLowerCase())
+        );
+
+        let sponsoredByData = [];
+        let sponsorText = "🤝 *Didanai oleh: KlimaChain Community Fund*";
+
+        if (matchingCompanies.length > 0) {
+            // Bagi rata skor CSR ke perusahaan sponsor
+            const splitScore = Number((aiResult.impactScore / matchingCompanies.length).toFixed(2));
+            const companyNames = [];
+
+            for (const company of matchingCompanies) {
+                company.totalImpactAcquired += splitScore;
+                await company.save();
+                
+                sponsoredByData.push({ companyName: company.name, splitScore: splitScore });
+                companyNames.push(company.name);
+            }
+
+            sponsorText = `🤝 **Aksi ini disponsori oleh:** ${companyNames.join(", ")}\n*(Masing-masing perusahaan menerima ${splitScore} Poin ESG)*`;
+        }
+
         const eduKeyboard = new InlineKeyboard()
             .text("📖 Cara mengolah sampah ini", `edu_${aiResult.actionType}`)
 
@@ -126,7 +164,8 @@ bot.on("message:photo", async (ctx) => {
             impactScore: aiResult.impactScore,
             aiReasoning: aiResult.reasoning,
             solanaTxHash: txHash,
-            imageHash: aiResult.imageHash
+            imageHash: aiResult.imageHash,
+            sponsoredBy: sponsoredByData
         });
 
         const user = await User.findOneAndUpdate(

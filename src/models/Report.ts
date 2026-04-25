@@ -24,6 +24,11 @@ const reportSchema = new mongoose.Schema({
         trees_planted: { type: Number, default: 0 },
         co2e_reduced_kg: { type: Number, default: 0 },
     },
+
+    sponsoredBy: [{
+        companyName: { type: String },
+        splitScore: { type: Number }
+    }]
 }, { timestamps: true });
 
 export const Report = mongoose.model('Report', reportSchema);

@@ -29,22 +29,22 @@ export const analyzeClimateAction = async (imageUrl: string) => {
             generationConfig: { responseMimeType: "application/json" }
         });
 
-        const prompt = `Kamu adalah Auditor Forensik Lingkungan tingkat tinggi. Tugasmu memvalidasi foto aksi bersih sampah atau tanam pohon. 
+        const prompt = `Kamu adalah Auditor Lingkungan dari KlimaBot. Tugasmu memvalidasi foto aksi bersih sampah, daur ulang, atau tumpukan sampah yang dikumpulkan warga. 
         
-        KAMU WAJIB MENOLAK FOTO JIKA:
-        1. Difoto dari layar (monitor, laptop, HP lain). Cari pola moiré, piksel layar, atau pantulan kaca.
-        2. Gambar buatan AI (AI Generated). Cari anatomi aneh, tekstur terlalu mulus, atau teks *gibberish*.
-        3. Gambar stok internet (terlalu profesional/studio).
-        4. Tidak ada konteks lingkungan nyata (hanya foto botol di atas kasur/meja kamar).
+        ATURAN VALIDASI (PENTING):
+        1. TOLAK HANYA JIKA: Gambar difoto dari layar monitor/laptop (ada pola moiré) atau murni buatan AI generator (gambar tidak logis).
+        2. TERIMA JIKA: Gambar menunjukkan sampah (plastik, organik, kertas, dll) atau aksi lingkungan, meskipun itu hanya difoto di atas meja, di dalam kamar, atau terlihat seperti tumpukan sampah biasa. Beri toleransi tinggi selama itu adalah foto sampah.
+        3. Beri skor TINGGI (>70) hanya jika sampah terlihat sudah dimasukkan ke dalam kantong sampah (trash bag), karung, atau tong sampah. Jika sampah hanya dijejerkan di atas meja atau lantai biasa, beri skor RENDAH (<30).
         
-        Untuk lolos, gambar harus terlihat seperti diambil langsung dari kamera HP di luar ruangan/lingkungan asli.
+        ATURAN OUTPUT JSON:
+        Bagian "reasoning" WAJIB sangat singkat, ramah, dan tidak lebih dari 2 kalimat pendek! Jangan berikan analisis forensik yang panjang.
         
         WAJIB BALAS DENGAN JSON FORMAT MURNI:
         { 
           "isAuthentic": boolean, 
           "actionType": "string", 
           "impactScore": number, 
-          "reasoning": "string (Jelaskan secara detail kenapa ditolak/diterima berdasarkan forensik visual)" 
+          "reasoning": "string (Maksimal 2 kalimat pendek)" 
         }`;
 
         const result = await model.generateContent([
