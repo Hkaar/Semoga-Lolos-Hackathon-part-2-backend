@@ -1,5 +1,5 @@
-import { generateWallet, keypairFromEncrypted } from "@/lib/solana/wallet-service";
-import { rewardUser, getBalance, transferTokens, deductTokens } from "@/lib/solana/token-service";
+import { generateWallet, keypairFromEncrypted } from "@/src/blockchain/solana/wallet-service";
+import { rewardUser, getBalance, transferTokens, deductTokens } from "@/src/blockchain/solana/token-service";
 
 async function main(): Promise<void> {
   const wallet = generateWallet();

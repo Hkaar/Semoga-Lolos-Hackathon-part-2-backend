@@ -4,7 +4,9 @@ const reportSchema = new mongoose.Schema({
     chatId: { type: String, required: true },
     imageUrl: { type: String, required: true },
     isAuthentic: { type: Boolean, required: true },
+
     actionType: { type: String, default: "Unidentified" },
+    
     impactScore: { type: Number, default: 0 },
     aiReasoning: { type: String },
     solanaTxHash: { type: String }, 
@@ -12,6 +14,15 @@ const reportSchema = new mongoose.Schema({
     location: {
         lat: { type: Number },
         lng: { type: Number }
+    },
+
+    title: { type: String, default: "Unidentified Action" },
+
+    location_name: { type: String },
+    extractedMetrics: {
+        waste_kg: { type: Number, default: 0 },
+        trees_planted: { type: Number, default: 0 },
+        co2e_reduced_kg: { type: Number, default: 0 },
     },
 }, { timestamps: true });
 
