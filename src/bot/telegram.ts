@@ -1,9 +1,10 @@
 import { Bot, InlineKeyboard, Keyboard } from "grammy";
-import { analyzeClimateAction, askEcoAgent } from '../ai/vision';
-import { mintRewardOnSolana } from '../blockchain/solana';
-import { Report } from '../models/Report';
-import { User } from "../models/User";
-import { Company } from '../models/Company';
+import { analyzeClimateAction, askEcoAgent } from '@/src/ai/vision';
+import { mintRewardOnSolana } from '@/src/blockchain/solana';
+import { Report } from '@/src/models/Report';
+import { User } from "@/src/models/User";
+import { Company } from '@/src/models/Company';
+import { reverseGeocode } from "@/utils/geocode";
 
 const bot = new Bot(process.env.TELEGRAM_TOKEN as string);
 const userCooldowns = new Map<string, number>();
@@ -225,11 +226,14 @@ bot.on("message:location", async (ctx) => {
         const lastReport = await Report.findOne({ chatId }).sort({ createdAt: -1 });
 
         if (lastReport) {
+            const locationName = await reverseGeocode(latitude, longitude);
+
             lastReport.location = { lat: latitude, lng: longitude };
+            lastReport.location_name = locationName;
             await lastReport.save();
 
             await ctx.reply("📍 Lokasi tercatat! Terima kasih telah berkontribusi pada peta DePIN KlimaBot.", {
-                reply_markup: { remove_keyboard: true } 
+                reply_markup: { remove_keyboard: true }
             });
         }
     } catch (error) {
