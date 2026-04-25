@@ -1,6 +1,13 @@
 import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
 
+export type CompanyJwtPayload = {
+    id: string;
+    name: string;
+    email: string;
+    targetCategories: string[];
+};
+
 export const companyJwtMiddleware = new Elysia({ name: 'company-jwt-middleware' })
     .use(
         jwt({
@@ -9,7 +16,7 @@ export const companyJwtMiddleware = new Elysia({ name: 'company-jwt-middleware' 
             exp: '7d',
         })
     )
-    .derive(async ({ jwt, headers, set }) => {
+    .derive({ as: 'scoped' }, async ({ jwt, headers, set }) => {
         const auth = headers['authorization'];
 
         if (!auth || !auth.startsWith('Bearer ')) {
@@ -26,10 +33,6 @@ export const companyJwtMiddleware = new Elysia({ name: 'company-jwt-middleware' 
         }
 
         return {
-            company: payload as {
-                id: string;
-                name: string;
-                targetCategory: string;
-            },
+            company: payload as CompanyJwtPayload,
         };
     });
