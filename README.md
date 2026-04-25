@@ -40,7 +40,7 @@ Hackfest 2026 - Code for Humanity
 - Bun
 - Elysia.js
 - MongoDB
-- Solana
+- Solana (Blockchain)
 - Gemini API
 - Grammy.js - Telegram Bot
 - Nominatim (OpenStreetMap) - Reverse Geocoding
